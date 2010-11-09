@@ -7,8 +7,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.SortedSet;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -26,12 +29,12 @@ public class ResourceScanner {
     private final Set<Resource> mResources = new HashSet<Resource>();
     private final Set<Resource> mUsedResources = new HashSet<Resource>();
     
-    private static final Pattern resourceTypePattern = Pattern.compile("^\\s*public static final class (\\w+)\\s*\\{$");
-    private static final Pattern resourceNamePattern = Pattern.compile("^\\s*public static final int (\\w+)=0x[0-9A-Fa-f]+;$");
+    private static final Pattern RESOURCE_TYPE_PATTERN = Pattern.compile("^\\s*public static final class (\\w+)\\s*\\{$");
+    private static final Pattern RESOURCE_NAME_PATTERN = Pattern.compile("^\\s*public static final int (\\w+)=0x[0-9A-Fa-f]+;$");
     
-    private static final String sUsagePrefixType = "{type}";
-    private static final FileType sJavaFileType = new FileType("java", "R." + sUsagePrefixType + ".");
-    private static final FileType sXmlFileType = new FileType("xml", "@" + sUsagePrefixType + "/");
+    private static final String TYPE_USAGE_PREFIX = "{type}";
+    private static final FileType JAVA_FILE_TYPE = new FileType("java", "R." + TYPE_USAGE_PREFIX + ".");
+    private static final FileType XML_FILE_TYPE = new FileType("xml", "@" + TYPE_USAGE_PREFIX + "/");
     
     public ResourceScanner() {
         final String baseDirectory = System.getProperty("user.dir");
@@ -49,7 +52,7 @@ public class ResourceScanner {
     public void run() {
         System.out.println("Running in: " + mBaseDirectory.getAbsolutePath());
         
-        findDirectories();
+        findPaths();
         
         if (mSrcDirectory == null || mResDirectory == null || mManifestFile == null) {
             System.err.println("The current directory is not a valid Android project root.");
@@ -73,9 +76,28 @@ public class ResourceScanner {
         
         mUsedResources.clear();
         
-        searchFiles(mSrcDirectory, sJavaFileType);
-        searchFiles(mResDirectory, sXmlFileType);
-        searchFiles(mManifestFile, sXmlFileType);
+        searchFiles(mSrcDirectory, JAVA_FILE_TYPE);
+        searchFiles(mResDirectory, XML_FILE_TYPE);
+        searchFiles(mManifestFile, XML_FILE_TYPE);
+        
+        /*
+         * Find the paths where the unused resources are declared.
+         */
+        final SortedMap<String, SortedMap<String, Resource>> resources = new TreeMap<String, SortedMap<String, Resource>>();
+        
+        for (final Resource resource : mResources) {
+            final String type = resource.getType();
+            SortedMap<String, Resource> typeMap = resources.get(type);
+            
+            if (typeMap == null) {
+                typeMap = new TreeMap<String, Resource>();
+                resources.put(type, typeMap);
+            }
+            
+            typeMap.put(resource.getName(), resource);
+        }
+        
+        findDeclaredPaths(mResDirectory, resources);
         
         final int unusedResources = mResources.size();
         
@@ -98,7 +120,7 @@ public class ResourceScanner {
         }
     }
     
-    private void findDirectories() {
+    private void findPaths() {
         final File[] children = mBaseDirectory.listFiles();
         
         for (final File file : children) {
@@ -148,8 +170,8 @@ public class ResourceScanner {
             done = (line == null);
             
             if (line != null) {
-                final Matcher typeMatcher = resourceTypePattern.matcher(line);
-                final Matcher nameMatcher = resourceNamePattern.matcher(line);
+                final Matcher typeMatcher = RESOURCE_TYPE_PATTERN.matcher(line);
+                final Matcher nameMatcher = RESOURCE_NAME_PATTERN.matcher(line);
                 
                 if (nameMatcher.find()) {
                     mResources.add(new Resource(type, nameMatcher.group(1)));
@@ -200,7 +222,7 @@ public class ResourceScanner {
         final String fileContents = stringBuilder.toString();
         
         for (final Resource resource : mResources) {
-            if (fileContents.contains(usagePrefix.replace(sUsagePrefixType, resource.getType()) + resource.getName())) {
+            if (fileContents.contains(usagePrefix.replace(TYPE_USAGE_PREFIX, resource.getType()) + resource.getName())) {
                 foundResources.add(resource);
             }
         }
@@ -212,5 +234,37 @@ public class ResourceScanner {
         
         reader.close();
         inputStream.close();
+    }
+    
+    private void findDeclaredPaths(final File file, final Map<String, SortedMap<String, Resource>> resources) {
+        if (file.isDirectory()) {
+            for (final File child : file.listFiles()) {
+                final String fileName = child.getName();
+                if (!fileName.startsWith(".")) {
+                    final String type = fileName.split("-")[0];
+                    findDeclaredPaths(child, type, resources);
+                }
+            }
+        }
+    }
+    
+    private void findDeclaredPaths(final File file, final String type, final Map<String, SortedMap<String, Resource>> resources) {
+        if (file.isDirectory()) {
+            for (final File child : file.listFiles()) {
+                final String fileName = child.getName();
+                if (!fileName.startsWith(".")) {
+                    final String resourceName = fileName.split("\\.")[0];
+                    final Map<String, Resource> typeMap = resources.get(type);
+                    
+                    if (typeMap != null) {
+                        final Resource resource = typeMap.get(resourceName);
+                        
+                        if (resource != null) {
+                            resource.addDeclaredPath(child.getAbsolutePath());
+                        }
+                    }
+                }
+            }
+        }
     }
 }
