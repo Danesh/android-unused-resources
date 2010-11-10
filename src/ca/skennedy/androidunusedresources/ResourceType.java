@@ -13,7 +13,6 @@ public abstract class ResourceType {
     public String getType() {
         return mType;
     }
-    
-    public abstract boolean doesDirectoryContainResources(File file);
-    public abstract boolean doesFileDeclareResource(File file, String resourceName);
+
+    public abstract boolean doesFileDeclareResource(File parent, File file, String resourceName);
 }
