@@ -76,6 +76,7 @@ public class ResourceScanner {
     }
     
     public ResourceScanner() {
+        super();
         final String baseDirectory = System.getProperty("user.dir");
         mBaseDirectory = new File(baseDirectory);
     }
@@ -85,6 +86,7 @@ public class ResourceScanner {
      * @param baseDirectory The project directory to use.
      */
     protected ResourceScanner(final String baseDirectory) {
+        super();
         mBaseDirectory = new File(baseDirectory);
     }
     

@@ -13,6 +13,7 @@ public class Resource implements Comparable<Resource> {
     private static final String sPathFormat = "    %s";
     
     public Resource(final String type, final String name) {
+        super();
         mType = type;
         mName = name;
     }
@@ -23,10 +24,6 @@ public class Resource implements Comparable<Resource> {
     
     public String getName() {
         return mName;
-    }
-    
-    public SortedSet<String> getDeclaredPaths() {
-        return mDeclaredPaths;
     }
     
     public void addDeclaredPath(final String path) {
@@ -45,14 +42,30 @@ public class Resource implements Comparable<Resource> {
     }
     
     @Override
-    public String toString() {
-        final StringBuilder string = new StringBuilder(String.format(sStringFormat, mType, mName));
-
-        for (final String path : mDeclaredPaths) {
-            string.append('\n');
-            string.append(String.format(sPathFormat, path));
+    public boolean equals(final Object o) {
+        if (o == null || !(o instanceof Resource)) {
+            return false;
         }
         
-        return string.toString();
+        final Resource resource = (Resource) o;
+        
+        return mType.equals(resource.getType()) && mName.equals(resource.getName());
+    }
+    
+    @Override
+    public int hashCode() {
+        return (mType + '/' + mName).hashCode();
+    }
+    
+    @Override
+    public String toString() {
+        final StringBuilder stringBuilder = new StringBuilder(String.format(sStringFormat, mType, mName));
+
+        for (final String path : mDeclaredPaths) {
+            stringBuilder.append('\n');
+            stringBuilder.append(String.format(sPathFormat, path));
+        }
+        
+        return stringBuilder.toString();
     }
 }

@@ -6,6 +6,7 @@ public abstract class ResourceType {
     private final String mType;
     
     public ResourceType(final String type) {
+        super();
         mType = type;
     }
     

@@ -5,6 +5,7 @@ public class FileType {
     private final String mUsagePrefix;
     
     public FileType(final String extension, final String usagePrefix) {
+        super();
         mExtension = extension;
         mUsagePrefix = usagePrefix;
     }
