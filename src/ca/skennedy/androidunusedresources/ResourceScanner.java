@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -29,12 +30,50 @@ public class ResourceScanner {
     private final Set<Resource> mResources = new HashSet<Resource>();
     private final Set<Resource> mUsedResources = new HashSet<Resource>();
     
-    private static final Pattern RESOURCE_TYPE_PATTERN = Pattern.compile("^\\s*public static final class (\\w+)\\s*\\{$");
-    private static final Pattern RESOURCE_NAME_PATTERN = Pattern.compile("^\\s*public static final int (\\w+)=0x[0-9A-Fa-f]+;$");
+    private static final Pattern sResourceTypePattern = Pattern.compile("^\\s*public static final class (\\w+)\\s*\\{$");
+    private static final Pattern sResourceNamePattern = Pattern.compile("^\\s*public static final int (\\w+)=0x[0-9A-Fa-f]+;$");
     
-    private static final String TYPE_USAGE_PREFIX = "{type}";
-    private static final FileType JAVA_FILE_TYPE = new FileType("java", "R." + TYPE_USAGE_PREFIX + ".");
-    private static final FileType XML_FILE_TYPE = new FileType("xml", "@" + TYPE_USAGE_PREFIX + "/");
+    private static final String USAGE_PREFIX = "{type}";
+    private static final FileType sJavaFileType = new FileType("java", "R." + USAGE_PREFIX + ".");
+    private static final FileType sXmlFileType = new FileType("xml", "@" + USAGE_PREFIX + "/");
+    
+    private static final Map<String, ResourceType> sResourceTypes = new HashMap<String, ResourceType>();
+    
+    static {
+        // TODO: find declarations of these resources
+        // anim
+        // array
+        // bool
+        // color
+        // dimen
+        // drawable
+        // id
+        // integer
+        // menu
+        // plurals
+        // string
+        // style
+        
+        // layout
+        sResourceTypes.put("layout", new ResourceType("layout") {
+            @Override
+            public boolean doesDirectoryContainResources(final File file) {
+                if (file.isDirectory()) {
+                    final String directoryType = file.getName().split("-")[0];
+                    return directoryType.equals(getType());
+                }
+                
+                return false;
+            }
+            
+            @Override
+            public boolean doesFileDeclareResource(final File file, final String resourceName) {
+                final String fileName = file.getName().split("\\.")[0];
+                
+                return fileName.equals(resourceName);
+            }
+        });
+    }
     
     public ResourceScanner() {
         final String baseDirectory = System.getProperty("user.dir");
@@ -76,9 +115,9 @@ public class ResourceScanner {
         
         mUsedResources.clear();
         
-        searchFiles(mSrcDirectory, JAVA_FILE_TYPE);
-        searchFiles(mResDirectory, XML_FILE_TYPE);
-        searchFiles(mManifestFile, XML_FILE_TYPE);
+        searchFiles(mSrcDirectory, sJavaFileType);
+        searchFiles(mResDirectory, sXmlFileType);
+        searchFiles(mManifestFile, sXmlFileType);
         
         /*
          * Find the paths where the unused resources are declared.
@@ -97,7 +136,17 @@ public class ResourceScanner {
             typeMap.put(resource.getName(), resource);
         }
         
-        findDeclaredPaths(mResDirectory, resources);
+        // Ensure we only try to find resource types we're using
+        final Map<String, ResourceType> resourceTypes = new HashMap<String,ResourceType>(resources.size());
+        
+        for (final String type : resources.keySet()) {
+            final ResourceType resourceType = sResourceTypes.get(type);
+            if (resourceType != null) {
+                resourceTypes.put(type, resourceType);
+            }
+        }
+        
+        findDeclaredPaths(null, mResDirectory, resourceTypes, resources);
         
         final int unusedResources = mResources.size();
         
@@ -170,8 +219,8 @@ public class ResourceScanner {
             done = (line == null);
             
             if (line != null) {
-                final Matcher typeMatcher = RESOURCE_TYPE_PATTERN.matcher(line);
-                final Matcher nameMatcher = RESOURCE_NAME_PATTERN.matcher(line);
+                final Matcher typeMatcher = sResourceTypePattern.matcher(line);
+                final Matcher nameMatcher = sResourceNamePattern.matcher(line);
                 
                 if (nameMatcher.find()) {
                     mResources.add(new Resource(type, nameMatcher.group(1)));
@@ -222,7 +271,7 @@ public class ResourceScanner {
         final String fileContents = stringBuilder.toString();
         
         for (final Resource resource : mResources) {
-            if (fileContents.contains(usagePrefix.replace(TYPE_USAGE_PREFIX, resource.getType()) + resource.getName())) {
+            if (fileContents.contains(usagePrefix.replace(USAGE_PREFIX, resource.getType()) + resource.getName())) {
                 foundResources.add(resource);
             }
         }
@@ -236,31 +285,26 @@ public class ResourceScanner {
         inputStream.close();
     }
     
-    private void findDeclaredPaths(final File file, final Map<String, SortedMap<String, Resource>> resources) {
+    private void findDeclaredPaths(final File parent, final File file, final Map<String, ResourceType> resourceTypes,
+            final Map<String, SortedMap<String, Resource>> resources) {
         if (file.isDirectory()) {
             for (final File child : file.listFiles()) {
-                final String fileName = child.getName();
-                if (!fileName.startsWith(".")) {
-                    final String type = fileName.split("-")[0];
-                    findDeclaredPaths(child, type, resources);
+                if (!child.isHidden()) {
+                    findDeclaredPaths(file, child, resourceTypes, resources);
                 }
             }
-        }
-    }
-    
-    private void findDeclaredPaths(final File file, final String type, final Map<String, SortedMap<String, Resource>> resources) {
-        if (file.isDirectory()) {
-            for (final File child : file.listFiles()) {
-                final String fileName = child.getName();
-                if (!fileName.startsWith(".")) {
-                    final String resourceName = fileName.split("\\.")[0];
-                    final Map<String, Resource> typeMap = resources.get(type);
-                    
-                    if (typeMap != null) {
-                        final Resource resource = typeMap.get(resourceName);
+        } else {
+            if (!file.isHidden()) {
+                for (final ResourceType resourceType : resourceTypes.values()) {
+                    if (resourceType.doesDirectoryContainResources(parent)) {
+                        final Map<String, Resource> typeMap = resources.get(resourceType.getType());
                         
-                        if (resource != null) {
-                            resource.addDeclaredPath(child.getAbsolutePath());
+                        if (typeMap != null) {
+                            for (final Resource resource : typeMap.values()) {
+                                if (resourceType.doesFileDeclareResource(file, resource.getName())) {
+                                    resource.addDeclaredPath(file.getAbsolutePath());
+                                }
+                            }
                         }
                     }
                 }
