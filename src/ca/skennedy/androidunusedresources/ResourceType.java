@@ -14,5 +14,5 @@ public abstract class ResourceType {
         return mType;
     }
 
-    public abstract boolean doesFileDeclareResource(File parent, File file, String resourceName);
+    public abstract boolean doesFileDeclareResource(File parent, String fileName, String fileContents, String resourceName);
 }

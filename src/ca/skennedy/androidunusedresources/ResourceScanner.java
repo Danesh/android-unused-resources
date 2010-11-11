@@ -55,7 +55,8 @@ public class ResourceScanner {
         // id
         sResourceTypes.put("id", new ResourceType("id") {
             @Override
-            public boolean doesFileDeclareResource(final File parent, final File file, final String resourceName) {
+            public boolean doesFileDeclareResource(final File parent, final String fileName,
+                    final String fileContents, final String resourceName) {
                 // Check if we're in a valid directory
                 if (!parent.isDirectory()) {
                     return false;
@@ -71,14 +72,6 @@ public class ResourceScanner {
                 final Pattern valuesPattern0 = Pattern.compile("<item.*?type\\s*=\\s*\"id\".*?name\\s*=\\s*\"" + resourceName + "\".*?/?>");
                 final Pattern valuesPattern1 = Pattern.compile("<item.*?name\\s*=\\s*\"" + resourceName + "\".*?type\\s*=\\s*\"id\".*?/?>");
                 final Pattern layoutPattern = Pattern.compile(":id\\s*=\\s*\"@\\+id/" + resourceName + "\"");
-                
-                final String fileContents;
-                try {
-                    fileContents = FileUtilities.getFileContents(file);
-                } catch (final IOException e) {
-                    e.printStackTrace();
-                    return false;
-                }
                 
                 Matcher matcher = valuesPattern0.matcher(fileContents);
                 
@@ -105,7 +98,8 @@ public class ResourceScanner {
         // layout
         sResourceTypes.put("layout", new ResourceType("layout") {
             @Override
-            public boolean doesFileDeclareResource(final File parent, final File file, final String resourceName) {
+            public boolean doesFileDeclareResource(final File parent, final String fileName,
+                    final String fileContents, final String resourceName) {
                 // Check if we're in a valid directory
                 if (!parent.isDirectory()) {
                     return false;
@@ -117,16 +111,17 @@ public class ResourceScanner {
                 }
                 
                 // Check if the resource is declared here
-                final String fileName = file.getName().split("\\.")[0];
+                final String name = fileName.split("\\.")[0];
                 
-                return fileName.equals(resourceName);
+                return name.equals(resourceName);
             }
         });
         
         // string
         sResourceTypes.put("string", new ResourceType("string") {
             @Override
-            public boolean doesFileDeclareResource(final File parent, final File file, final String resourceName) {
+            public boolean doesFileDeclareResource(final File parent, final String fileName,
+                    final String fileContents, final String resourceName) {
                 // Check if we're in a valid directory
                 if (!parent.isDirectory()) {
                     return false;
@@ -139,14 +134,6 @@ public class ResourceScanner {
                 
                 // Check if the resource is declared here
                 final Pattern pattern = Pattern.compile("<string.*?name\\s*=\\s*\"" + resourceName + "\".*?/?>");
-                
-                final String fileContents;
-                try {
-                    fileContents = FileUtilities.getFileContents(file);
-                } catch (final IOException e) {
-                    e.printStackTrace();
-                    return false;
-                }
                 
                 final Matcher matcher = pattern.matcher(fileContents);
                 
@@ -362,12 +349,21 @@ public class ResourceScanner {
             }
         } else {
             if (!file.isHidden()) {
+                final String fileName = file.getName();
+                
+                String fileContents = "";
+                try {
+                    fileContents = FileUtilities.getFileContents(file);
+                } catch (final IOException e) {
+                    e.printStackTrace();
+                }
+                
                 for (final ResourceType resourceType : resourceTypes.values()) {
                     final Map<String, Resource> typeMap = resources.get(resourceType.getType());
                     
                     if (typeMap != null) {
                         for (final Resource resource : typeMap.values()) {
-                            if (resourceType.doesFileDeclareResource(parent, file, resource.getName())) {
+                            if (resourceType.doesFileDeclareResource(parent, fileName, fileContents, resource.getName())) {
                                 resource.addDeclaredPath(file.getAbsolutePath());
                             }
                         }
