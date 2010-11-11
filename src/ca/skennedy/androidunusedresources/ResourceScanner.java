@@ -42,7 +42,7 @@ public class ResourceScanner {
     static {
         // TODO: find declarations of these resources
         // anim
-        // array
+        // array (referenced by string-array)
         // bool
         // color
         // dimen
@@ -50,7 +50,6 @@ public class ResourceScanner {
         // integer
         // menu
         // plurals
-        // string
         // style
         
         // id
@@ -69,8 +68,8 @@ public class ResourceScanner {
                 
                 // Check if the resource is declared here
                 // TODO: test the valuesPattern regular expressions
-                final Pattern valuesPattern0 = Pattern.compile("<item.*?type\\s*=\\s*\"id\".*?name\\s*=\\s*\"" + resourceName + "\".*?/>");
-                final Pattern valuesPattern1 = Pattern.compile("<item.*?name\\s*=\\s*\"" + resourceName + "\".*?type\\s*=\\s*\"id\".*?/>");
+                final Pattern valuesPattern0 = Pattern.compile("<item.*?type\\s*=\\s*\"id\".*?name\\s*=\\s*\"" + resourceName + "\".*?/?>");
+                final Pattern valuesPattern1 = Pattern.compile("<item.*?name\\s*=\\s*\"" + resourceName + "\".*?type\\s*=\\s*\"id\".*?/?>");
                 final Pattern layoutPattern = Pattern.compile(":id\\s*=\\s*\"@\\+id/" + resourceName + "\"");
                 
                 final String fileContents;
@@ -121,6 +120,41 @@ public class ResourceScanner {
                 final String fileName = file.getName().split("\\.")[0];
                 
                 return fileName.equals(resourceName);
+            }
+        });
+        
+        // string
+        sResourceTypes.put("string", new ResourceType("string") {
+            @Override
+            public boolean doesFileDeclareResource(final File parent, final File file, final String resourceName) {
+                // Check if we're in a valid directory
+                if (!parent.isDirectory()) {
+                    return false;
+                }
+                
+                final String directoryType = parent.getName().split("-")[0];
+                if (!directoryType.equals("values")) {
+                    return false;
+                }
+                
+                // Check if the resource is declared here
+                final Pattern pattern = Pattern.compile("<string.*?name\\s*=\\s*\"" + resourceName + "\".*?/?>");
+                
+                final String fileContents;
+                try {
+                    fileContents = FileUtilities.getFileContents(file);
+                } catch (final IOException e) {
+                    e.printStackTrace();
+                    return false;
+                }
+                
+                final Matcher matcher = pattern.matcher(fileContents);
+                
+                if (matcher.find()) {
+                    return true;
+                }
+                
+                return false;
             }
         });
     }
