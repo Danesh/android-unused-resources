@@ -68,7 +68,6 @@ public class ResourceScanner {
                 }
                 
                 // Check if the resource is declared here
-                // TODO: test the valuesPattern regular expressions
                 final Pattern valuesPattern0 = Pattern.compile("<item.*?type\\s*=\\s*\"id\".*?name\\s*=\\s*\"" + resourceName + "\".*?/?>");
                 final Pattern valuesPattern1 = Pattern.compile("<item.*?name\\s*=\\s*\"" + resourceName + "\".*?type\\s*=\\s*\"id\".*?/?>");
                 final Pattern layoutPattern = Pattern.compile(":id\\s*=\\s*\"@\\+id/" + resourceName + "\"");
