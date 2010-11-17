@@ -243,7 +243,11 @@ public class ResourceScanner {
     
     private void findPaths() {
         final File[] children = mBaseDirectory.listFiles();
-        
+
+        if (children == null) {
+            return;
+        }
+
         for (final File file : children) {
             if (file.isDirectory()) {
                 if (file.getName().equals("src")) {
