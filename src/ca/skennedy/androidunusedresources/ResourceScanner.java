@@ -49,7 +49,6 @@ public class ResourceScanner {
         // integer
         // menu
         // plurals
-        // style
         
         // id
         sResourceTypes.put("id", new ResourceType("id") {
@@ -132,6 +131,34 @@ public class ResourceScanner {
                 
                 // Check if the resource is declared here
                 final Pattern pattern = Pattern.compile("<string.*?name\\s*=\\s*\"" + resourceName + "\".*?/?>");
+                
+                final Matcher matcher = pattern.matcher(fileContents);
+                
+                if (matcher.find()) {
+                    return true;
+                }
+                
+                return false;
+            }
+        });
+        
+        // style
+        sResourceTypes.put("style", new ResourceType("style") {
+            @Override
+            public boolean doesFileDeclareResource(final File parent, final String fileName,
+                    final String fileContents, final String resourceName) {
+                // Check if we're in a valid directory
+                if (!parent.isDirectory()) {
+                    return false;
+                }
+                
+                final String directoryType = parent.getName().split("-")[0];
+                if (!directoryType.equals("values")) {
+                    return false;
+                }
+                
+                // Check if the resource is declared here
+                final Pattern pattern = Pattern.compile("<style.*?name\\s*=\\s*\"" + resourceName + "\".*?/?>");
                 
                 final Matcher matcher = pattern.matcher(fileContents);
                 
