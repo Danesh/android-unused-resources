@@ -33,9 +33,8 @@ public class ResourceScanner {
     private static final Pattern sResourceTypePattern = Pattern.compile("^\\s*public static final class (\\w+)\\s*\\{$");
     private static final Pattern sResourceNamePattern = Pattern.compile("^\\s*public static final int (\\w+)=0x[0-9A-Fa-f]+;$");
     
-    private static final String USAGE_PREFIX = "{type}";
-    private static final FileType sJavaFileType = new FileType("java", "R." + USAGE_PREFIX + ".");
-    private static final FileType sXmlFileType = new FileType("xml", "@" + USAGE_PREFIX + "/");
+    private static final FileType sJavaFileType = new FileType("java", "R." + FileType.USAGE_TYPE + "." + FileType.USAGE_NAME + "[^\\w_]");
+    private static final FileType sXmlFileType = new FileType("xml", "[\" >]@" + FileType.USAGE_TYPE + "/" + FileType.USAGE_NAME + "[\" <]");
     
     private static final Map<String, ResourceType> sResourceTypes = new HashMap<String, ResourceType>();
     
@@ -317,7 +316,7 @@ public class ResourceScanner {
             }
         } else if (file.getName().endsWith(fileType.getExtension())) {
             try {
-                searchFile(file, fileType.getUsagePrefix());
+                searchFile(file, fileType);
             } catch (final IOException e) {
                 System.err.println("There was a problem reading " + file.getAbsolutePath());
                 e.printStackTrace();
@@ -325,13 +324,15 @@ public class ResourceScanner {
         }
     }
     
-    private void searchFile(final File file, final String usagePrefix) throws IOException {
+    private void searchFile(final File file, final FileType fileType) throws IOException {
         final Set<Resource> foundResources = new HashSet<Resource>();
         
         final String fileContents = FileUtilities.getFileContents(file);
         
         for (final Resource resource : mResources) {
-            if (fileContents.contains(usagePrefix.replace(USAGE_PREFIX, resource.getType()) + resource.getName())) {
+            final Matcher matcher = fileType.getPattern(resource.getType(), resource.getName()).matcher(fileContents);
+            
+            if (matcher.find()) {
                 foundResources.add(resource);
             }
         }
