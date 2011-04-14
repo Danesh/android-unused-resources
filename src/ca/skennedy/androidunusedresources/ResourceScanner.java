@@ -357,7 +357,7 @@ public class ResourceScanner {
         final String fileContents = FileUtilities.getFileContents(file);
         
         for (final Resource resource : mResources) {
-            final Matcher matcher = fileType.getPattern(resource.getType(), resource.getName()).matcher(fileContents);
+            final Matcher matcher = fileType.getPattern(resource.getType(), resource.getName().replace("_", "[_\\.]")).matcher(fileContents);
             
             if (matcher.find()) {
                 foundResources.add(resource);
@@ -394,7 +394,7 @@ public class ResourceScanner {
                     
                     if (typeMap != null) {
                         for (final Resource resource : typeMap.values()) {
-                            if (resourceType.doesFileDeclareResource(parent, fileName, fileContents, resource.getName())) {
+                            if (resourceType.doesFileDeclareResource(parent, fileName, fileContents, resource.getName().replace("_", "[_\\.]"))) {
                                 resource.addDeclaredPath(file.getAbsolutePath());
                             }
                         }
