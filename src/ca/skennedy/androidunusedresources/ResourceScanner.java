@@ -49,6 +49,7 @@ public class ResourceScanner {
         // integer
         // menu
         // plurals
+        // xml
         
         // id
         sResourceTypes.put("id", new ResourceType("id") {
@@ -168,6 +169,30 @@ public class ResourceScanner {
                 
                 return false;
             }
+            
+            @Override
+            public boolean doesFileUseResource(final File parent, final String fileName, final String fileContents, final String resourceName) {
+             // Check if we're in a valid directory
+                if (!parent.isDirectory()) {
+                    return false;
+                }
+                
+                final String directoryType = parent.getName().split("-")[0];
+                if (!directoryType.equals("values")) {
+                    return false;
+                }
+                
+                // Check if the resource is used here as a parent
+                final Pattern pattern = Pattern.compile("<style.*?name\\s*=\\s*\"" + resourceName + "\\.\\w+\".*?/?>");
+                
+                final Matcher matcher = pattern.matcher(fileContents);
+                
+                if (matcher.find()) {
+                    return true;
+                }
+                
+                return false;
+            }
         });
     }
     
@@ -213,9 +238,9 @@ public class ResourceScanner {
         
         mUsedResources.clear();
         
-        searchFiles(mSrcDirectory, sJavaFileType);
-        searchFiles(mResDirectory, sXmlFileType);
-        searchFiles(mManifestFile, sXmlFileType);
+        searchFiles(null, mSrcDirectory, sJavaFileType);
+        searchFiles(null, mResDirectory, sXmlFileType);
+        searchFiles(null, mManifestFile, sXmlFileType);
         
         /*
          * Find the paths where the unused resources are declared.
@@ -336,14 +361,14 @@ public class ResourceScanner {
         inputStream.close();
     }
     
-    private void searchFiles(final File file, final FileType fileType) {
+    private void searchFiles(final File parent, final File file, final FileType fileType) {
         if (file.isDirectory()) {
             for (final File child : file.listFiles()) {
-                searchFiles(child, fileType);
+                searchFiles(file, child, fileType);
             }
         } else if (file.getName().endsWith(fileType.getExtension())) {
             try {
-                searchFile(file, fileType);
+                searchFile(parent, file, fileType);
             } catch (final IOException e) {
                 System.err.println("There was a problem reading " + file.getAbsolutePath());
                 e.printStackTrace();
@@ -351,7 +376,7 @@ public class ResourceScanner {
         }
     }
     
-    private void searchFile(final File file, final FileType fileType) throws IOException {
+    private void searchFile(final File parent, final File file, final FileType fileType) throws IOException {
         final Set<Resource> foundResources = new HashSet<Resource>();
         
         final String fileContents = FileUtilities.getFileContents(file);
@@ -359,8 +384,15 @@ public class ResourceScanner {
         for (final Resource resource : mResources) {
             final Matcher matcher = fileType.getPattern(resource.getType(), resource.getName().replace("_", "[_\\.]")).matcher(fileContents);
             
-            if (matcher.find()) {
+            if (matcher.find()) { 
                 foundResources.add(resource);
+            } else {
+                final ResourceType type = sResourceTypes.get(resource.getType());
+                
+                if (type != null
+                        && type.doesFileUseResource(parent, file.getName(), fileContents, resource.getName().replace("_", "[_\\.]"))) {
+                    foundResources.add(resource);
+                }
             }
         }
         
