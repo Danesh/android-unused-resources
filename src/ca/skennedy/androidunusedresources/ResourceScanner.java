@@ -172,14 +172,16 @@ public class ResourceScanner {
             
             @Override
             public boolean doesFileUseResource(final File parent, final String fileName, final String fileContents, final String resourceName) {
-             // Check if we're in a valid directory
-                if (!parent.isDirectory()) {
-                    return false;
-                }
-                
-                final String directoryType = parent.getName().split("-")[0];
-                if (!directoryType.equals("values")) {
-                    return false;
+                if (parent != null) {
+                    // Check if we're in a valid directory
+                    if (!parent.isDirectory()) {
+                        return false;
+                    }
+                    
+                    final String directoryType = parent.getName().split("-")[0];
+                    if (!directoryType.equals("values")) {
+                        return false;
+                    }
                 }
                 
                 // Check if the resource is used here as a parent
