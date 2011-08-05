@@ -45,11 +45,34 @@ public class ResourceScanner {
         // bool
         // color
         // dimen
-        // drawable
         // integer
         // menu
         // plurals
         // xml
+        
+        // drawable
+        sResourceTypes.put("drawable", new ResourceType("drawable") {
+            @Override
+            public boolean doesFileDeclareResource(final File parent, final String fileName,
+                    final String fileContents, final String resourceName) {
+                // Check if we're in a valid directory
+                if (!parent.isDirectory()) {
+                    return false;
+                }
+                
+                final String directoryType = parent.getName().split("-")[0];
+                if (!directoryType.equals(getType())) {
+                    return false;
+                }
+                
+                // Check if the resource is declared here
+                final String name = fileName.split("\\.")[0];
+                
+                final Pattern pattern = Pattern.compile("^" + resourceName + "$");
+                
+                return pattern.matcher(name).find();
+            }
+        });
         
         // id
         sResourceTypes.put("id", new ResourceType("id") {
@@ -111,7 +134,9 @@ public class ResourceScanner {
                 // Check if the resource is declared here
                 final String name = fileName.split("\\.")[0];
                 
-                return name.equals(resourceName);
+                final Pattern pattern = Pattern.compile("^" + resourceName + "$");
+                
+                return pattern.matcher(name).find();
             }
         });
         
