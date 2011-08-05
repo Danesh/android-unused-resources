@@ -344,18 +344,18 @@ public class ResourceScanner {
     private boolean findRJavaFile(final File baseDirectory) {
         final File[] children = baseDirectory.listFiles();
         
-        boolean found = false;
-        
         for (final File file : children) {
             if (file.getName().equals("R.java")) {
                 mRJavaFile = file;
                 return true;
             } else if (file.isDirectory()) {
-                found = findRJavaFile(file);
+                if(findRJavaFile(file)){
+                    return true;
+                }
             }
         }
         
-        return found;
+        return false;
     }
     
     private void generateResourceList() throws IOException {
