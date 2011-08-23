@@ -60,16 +60,31 @@ public class ResourceScanner {
                 }
                 
                 final String directoryType = parent.getName().split("-")[0];
-                if (!directoryType.equals(getType())) {
-                    return false;
+                if (directoryType.equals(getType())) {
+                    // We're in a drawable- directory
+                    
+                    // Check if the resource is declared here
+                    final String name = fileName.split("\\.")[0];
+                    
+                    final Pattern pattern = Pattern.compile("^" + resourceName + "$");
+                    
+                    return pattern.matcher(name).find();
                 }
                 
-                // Check if the resource is declared here
-                final String name = fileName.split("\\.")[0];
+                if (directoryType.equals("values")) {
+                    // We're in a values- directory
+                    
+                    // Check if the resource is declared here
+                    final Pattern pattern = Pattern.compile("<drawable.*?name\\s*=\\s*\"" + resourceName + "\".*?/?>");
+                    
+                    final Matcher matcher = pattern.matcher(fileContents);
+                    
+                    if (matcher.find()) {
+                        return true;
+                    }
+                }
                 
-                final Pattern pattern = Pattern.compile("^" + resourceName + "$");
-                
-                return pattern.matcher(name).find();
+                return false;
             }
         });
         
