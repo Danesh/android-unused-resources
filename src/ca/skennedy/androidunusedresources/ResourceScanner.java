@@ -45,7 +45,6 @@ public class ResourceScanner {
         // bool
         // color
         // dimen
-        // integer
         // menu
         // plurals
         // xml
@@ -107,6 +106,34 @@ public class ResourceScanner {
                 }
                 
                 matcher = layoutPattern.matcher(fileContents);
+                
+                if (matcher.find()) {
+                    return true;
+                }
+                
+                return false;
+            }
+        });
+        
+        // integer
+        sResourceTypes.put("integer", new ResourceType("integer") {
+            @Override
+            public boolean doesFileDeclareResource(final File parent, final String fileName,
+                    final String fileContents, final String resourceName) {
+                // Check if we're in a valid directory
+                if (!parent.isDirectory()) {
+                    return false;
+                }
+                
+                final String directoryType = parent.getName().split("-")[0];
+                if (!directoryType.equals("values")) {
+                    return false;
+                }
+                
+                // Check if the resource is declared here
+                final Pattern pattern = Pattern.compile("<integer.*?name\\s*=\\s*\"" + resourceName + "\".*?/?>");
+                
+                final Matcher matcher = pattern.matcher(fileContents);
                 
                 if (matcher.find()) {
                     return true;
