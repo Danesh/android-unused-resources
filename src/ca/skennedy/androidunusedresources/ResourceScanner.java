@@ -101,6 +101,33 @@ public class ResourceScanner {
                 
                 return false;
             }
+            
+            @Override
+            public boolean doesFileUseResource(final File parent, final String fileName, final String fileContents, final String resourceName) {
+                if (parent != null) {
+                    // Check if we're in a valid directory
+                    if (!parent.isDirectory()) {
+                        return false;
+                    }
+                    
+                    final String directoryType = parent.getName().split("-")[0];
+                    if (!directoryType.equals("layout")) {
+                        return false;
+                    }
+                }
+                
+                // Check if the attribute is used here
+                // TODO: This will fail to report attrs as unused even when they're never used.  Make it better, but don't allow any false positives.
+                final Pattern pattern = Pattern.compile("<.+?:" + resourceName + "\\s*=\\s*\".*?\".*?/?>");
+                
+                final Matcher matcher = pattern.matcher(fileContents);
+                
+                if (matcher.find()) {
+                    return true;
+                }
+                
+                return false;
+            }
         });
         
         // color
