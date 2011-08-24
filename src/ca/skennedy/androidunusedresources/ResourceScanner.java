@@ -42,6 +42,7 @@ public class ResourceScanner {
         // TODO: find declarations of these resources
         // anim
         // array (referenced by string-array)
+        // attr
         // bool
         // dimen
         // menu
