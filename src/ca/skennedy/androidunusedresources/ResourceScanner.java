@@ -41,12 +41,39 @@ public class ResourceScanner {
     static {
         // TODO: find declarations of these resources
         // anim
-        // array (referenced by string-array)
         // bool
         // dimen
         // menu
         // plurals
         // xml
+        
+        // array
+        sResourceTypes.put("array", new ResourceType("array") {
+            @Override
+            public boolean doesFileDeclareResource(final File parent, final String fileName,
+                    final String fileContents, final String resourceName) {
+                // Check if we're in a valid directory
+                if (!parent.isDirectory()) {
+                    return false;
+                }
+                
+                final String directoryType = parent.getName().split("-")[0];
+                if (!directoryType.equals("values")) {
+                    return false;
+                }
+                
+                // Check if the resource is declared here
+                final Pattern pattern = Pattern.compile("<([a-z]+\\-)?array.*?name\\s*=\\s*\"" + resourceName + "\".*?/?>");
+                
+                final Matcher matcher = pattern.matcher(fileContents);
+                
+                if (matcher.find()) {
+                    return true;
+                }
+                
+                return false;
+            }
+        });
         
         // attr
         sResourceTypes.put("attr", new ResourceType("attr") {
