@@ -384,12 +384,21 @@ public class ResourceScanner {
                     }
                 }
                 
-                // Check if the resource is used here as a parent
+                // Check if the resource is used here as a parent (name="Parent.Child")
                 final Pattern pattern = Pattern.compile("<style.*?name\\s*=\\s*\"" + resourceName + "\\.\\w+\".*?/?>");
                 
                 final Matcher matcher = pattern.matcher(fileContents);
                 
                 if (matcher.find()) {
+                    return true;
+                }
+                
+                // Check if the resource is used here as a parent (parent="Parent")
+                final Pattern pattern1 = Pattern.compile("<style.*?parent\\s*=\\s*\"" + resourceName + "\".*?/?>");
+                
+                final Matcher matcher1 = pattern1.matcher(fileContents);
+                
+                if (matcher1.find()) {
                     return true;
                 }
                 
