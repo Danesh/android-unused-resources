@@ -26,6 +26,7 @@ public class ResourceScanner {
     
     private File mManifestFile = null;
     private File mRJavaFile = null;
+    private String mPackageName = null;
     
     private final Set<Resource> mResources = new HashSet<Resource>();
     private final Set<Resource> mUsedResources = new HashSet<Resource>();
@@ -432,6 +433,13 @@ public class ResourceScanner {
             return;
         }
         
+        findPackageName();
+        
+        if (mPackageName == null || mPackageName.trim().length() == 0) {
+            System.err.println("Unable to determine your application's package name from AndroidManifest.xml.  Please ensure it is set.");
+            return;
+        }
+        
         if (mGenDirectory == null || !findRJavaFile(mGenDirectory)) {
             System.err.println("You must first build your project to generate R.java");
             return;
@@ -525,18 +533,30 @@ public class ResourceScanner {
         }
     }
     
-    private boolean findRJavaFile(final File baseDirectory) {
-        final File[] children = baseDirectory.listFiles();
+    private void findPackageName() {
         
-        for (final File file : children) {
-            if (file.getName().equals("R.java")) {
-                mRJavaFile = file;
-                return true;
-            } else if (file.isDirectory()) {
-                if(findRJavaFile(file)){
-                    return true;
-                }
-            }
+        String manifest = "";
+        
+        try {
+            manifest = FileUtilities.getFileContents(mManifestFile);
+        } catch (final IOException e) {
+            e.printStackTrace();
+        }
+        
+        final Pattern pattern = Pattern.compile("<manifest\\s+.*?package\\s*=\\s*\"([A-Za-z0-9\\.]+)\".*?>");
+        final Matcher matcher = pattern.matcher(manifest);
+        
+        if (matcher.find()) {
+            mPackageName = matcher.group(1);
+        }
+    }
+    
+    private boolean findRJavaFile(final File baseDirectory) {
+        final File rJava = new File(baseDirectory, mPackageName.replace('.', '/') + "/R.java");
+        
+        if (rJava.exists()) {
+            mRJavaFile = rJava;
+            return true;
         }
         
         return false;
