@@ -543,7 +543,7 @@ public class ResourceScanner {
             e.printStackTrace();
         }
         
-        final Pattern pattern = Pattern.compile("<manifest\\s+.*?package\\s*=\\s*\"([A-Za-z0-9\\.]+)\".*?>");
+        final Pattern pattern = Pattern.compile("<manifest\\s+.*?package\\s*=\\s*\"([A-Za-z0-9_\\.]+)\".*?>");
         final Matcher matcher = pattern.matcher(manifest);
         
         if (matcher.find()) {
