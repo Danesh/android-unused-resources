@@ -1,5 +1,7 @@
 package ca.skennedy.androidunusedresources;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
@@ -8,9 +10,12 @@ public class Resource implements Comparable<Resource> {
     private final String mName;
 
     private final SortedSet<String> mDeclaredPaths = new TreeSet<String>();
+    private final Set<String> mConfigurations = new HashSet<String>();
 
     private static final String sStringFormat = "%-10s: %s";
     private static final String sPathFormat = "    %s";
+
+    private static final String DEFAULT_CONFIGURATION = "default";
 
     public Resource(final String type, final String name) {
         super();
@@ -28,6 +33,18 @@ public class Resource implements Comparable<Resource> {
 
     public void addDeclaredPath(final String path) {
         mDeclaredPaths.add(path);
+    }
+
+    public void addConfiguration(final String configuration) {
+        if (configuration.length() > 0) {
+            mConfigurations.add(configuration);
+        } else {
+            mConfigurations.add(DEFAULT_CONFIGURATION);
+        }
+    }
+
+    public Set<String> getConfigurations() {
+        return mConfigurations;
     }
 
     @Override

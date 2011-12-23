@@ -500,36 +500,68 @@ public class ResourceScanner {
         /*
          * Find the paths where the unused resources are declared.
          */
-        final SortedMap<String, SortedMap<String, Resource>> resources = new TreeMap<String, SortedMap<String, Resource>>();
+        final SortedMap<String, SortedMap<String, Resource>> unusedResources = new TreeMap<String, SortedMap<String, Resource>>();
 
         for (final Resource resource : mResources) {
             final String type = resource.getType();
-            SortedMap<String, Resource> typeMap = resources.get(type);
+            SortedMap<String, Resource> typeMap = unusedResources.get(type);
 
             if (typeMap == null) {
                 typeMap = new TreeMap<String, Resource>();
-                resources.put(type, typeMap);
+                unusedResources.put(type, typeMap);
             }
 
             typeMap.put(resource.getName(), resource);
         }
 
-        // Ensure we only try to find resource types we're using
-        final Map<String, ResourceType> resourceTypes = new HashMap<String, ResourceType>(resources.size());
+        // Ensure we only try to find resource types that exist in the map we just built
+        final Map<String, ResourceType> unusedResourceTypes = new HashMap<String, ResourceType>(unusedResources.size());
 
-        for (final String type : resources.keySet()) {
+        for (final String type : unusedResources.keySet()) {
             final ResourceType resourceType = sResourceTypes.get(type);
             if (resourceType != null) {
-                resourceTypes.put(type, resourceType);
+                unusedResourceTypes.put(type, resourceType);
             }
         }
 
-        findDeclaredPaths(null, mResDirectory, resourceTypes, resources);
+        findDeclaredPaths(null, mResDirectory, unusedResourceTypes, unusedResources);
 
-        final int unusedResources = mResources.size();
+        /*
+         * Find the paths where the used resources are declared.
+         */
+        final SortedMap<String, SortedMap<String, Resource>> usedResources = new TreeMap<String, SortedMap<String, Resource>>();
 
-        if (unusedResources > 0) {
-            System.out.println(unusedResources + " unused resources were found:");
+        for (final Resource resource : mUsedResources) {
+            final String type = resource.getType();
+            SortedMap<String, Resource> typeMap = usedResources.get(type);
+
+            if (typeMap == null) {
+                typeMap = new TreeMap<String, Resource>();
+                usedResources.put(type, typeMap);
+            }
+
+            typeMap.put(resource.getName(), resource);
+        }
+
+        // Ensure we only try to find resource types that exist in the map we just built
+        final Map<String, ResourceType> usedResourceTypes = new HashMap<String, ResourceType>(usedResources.size());
+
+        for (final String type : usedResources.keySet()) {
+            final ResourceType resourceType = sResourceTypes.get(type);
+            if (resourceType != null) {
+                usedResourceTypes.put(type, resourceType);
+            }
+        }
+
+        findDeclaredPaths(null, mResDirectory, usedResourceTypes, usedResources);
+
+        final UsageMatrix usageMatrix = new UsageMatrix(mBaseDirectory, usedResources);
+        usageMatrix.generateMatrices();
+
+        final int unusedResourceCount = mResources.size();
+
+        if (unusedResourceCount > 0) {
+            System.out.println(unusedResourceCount + " unused resources were found:");
 
             final SortedSet<Resource> sortedResources = new TreeSet<Resource>(mResources);
 
@@ -694,6 +726,9 @@ public class ResourceScanner {
                         for (final Resource resource : typeMap.values()) {
                             if (resourceType.doesFileDeclareResource(parent, fileName, fileContents, resource.getName().replace("_", "[_\\.]"))) {
                                 resource.addDeclaredPath(file.getAbsolutePath());
+
+                                final String configuration = parent.getName().replace(resourceType.getType(), "").replaceAll("^-", "");
+                                resource.addConfiguration(configuration);
                             }
                         }
                     }
