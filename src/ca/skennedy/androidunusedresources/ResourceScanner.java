@@ -6,8 +6,10 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
@@ -32,7 +34,7 @@ public class ResourceScanner {
     private final Set<Resource> mUsedResources = new HashSet<Resource>();
 
     private static final Pattern sResourceTypePattern = Pattern.compile("^\\s*public static final class (\\w+)\\s*\\{$");
-    private static final Pattern sResourceNamePattern = Pattern.compile("^\\s*public static final int (\\w+)=0x[0-9A-Fa-f]+;$");
+    private static final Pattern sResourceNamePattern = Pattern.compile("^\\s*public static( final)? int (\\w+)=0x[0-9A-Fa-f]+;$");
 
     private static final FileType sJavaFileType = new FileType("java", "R." + FileType.USAGE_TYPE + "." + FileType.USAGE_NAME + "[^\\w_]");
     private static final FileType sXmlFileType = new FileType("xml", "[\" >]@" + FileType.USAGE_TYPE + "/" + FileType.USAGE_NAME + "[\" <]");
@@ -469,20 +471,29 @@ public class ResourceScanner {
             return;
         }
 
-        findPackageName();
+        mPackageName = findPackageName(mManifestFile);
 
         if (mPackageName == null || mPackageName.trim().length() == 0) {
             System.err.println("Unable to determine your application's package name from AndroidManifest.xml.  Please ensure it is set.");
             return;
         }
 
-        if (mGenDirectory == null || !findRJavaFile(mGenDirectory)) {
+        if (mGenDirectory == null) {
             System.err.println("You must first build your project to generate R.java");
             return;
         }
 
+        mRJavaFile = findRJavaFile(mGenDirectory, mPackageName);
+
+        if (mRJavaFile == null) {
+            System.err.println("You must first build your project to generate R.java");
+            return;
+        }
+
+        mResources.clear();
+
         try {
-            generateResourceList();
+            mResources.addAll(getResourceList(mRJavaFile));
         } catch (final IOException e) {
             System.err.println("The R.java found could not be opened.");
             e.printStackTrace();
@@ -555,6 +566,26 @@ public class ResourceScanner {
 
         findDeclaredPaths(null, mResDirectory, usedResourceTypes, usedResources);
 
+        // Deal with resources from library projects
+        final Set<Resource> libraryProjectResources = getLibraryProjectResources();
+
+        /*
+         * Since an app can override a library project resource, we cannot simply remove all resources that are defined in library projects. Instead, we must
+         * only remove them if we cannot find a declaration of them in the current project.
+         */
+        for (final Resource libraryResource : libraryProjectResources) {
+            final SortedMap<String, Resource> typedResources = unusedResources.get(libraryResource.getType());
+
+            if (typedResources != null) {
+                final Resource appResource = typedResources.get(libraryResource.getName());
+
+                if (appResource != null && appResource.hasNoDeclaredPaths()) {
+                    typedResources.remove(libraryResource.getName());
+                    mResources.remove(appResource);
+                }
+            }
+        }
+
         final UsageMatrix usageMatrix = new UsageMatrix(mBaseDirectory, usedResources);
         usageMatrix.generateMatrices();
 
@@ -601,12 +632,11 @@ public class ResourceScanner {
         }
     }
 
-    private void findPackageName() {
-
+    private static String findPackageName(final File androidManifestFile) {
         String manifest = "";
 
         try {
-            manifest = FileUtilities.getFileContents(mManifestFile);
+            manifest = FileUtilities.getFileContents(androidManifestFile);
         } catch (final IOException e) {
             e.printStackTrace();
         }
@@ -615,28 +645,80 @@ public class ResourceScanner {
         final Matcher matcher = pattern.matcher(manifest);
 
         if (matcher.find()) {
-            mPackageName = matcher.group(1);
+            return matcher.group(1);
         }
+
+        return null;
     }
 
-    private boolean findRJavaFile(final File baseDirectory) {
-        final File rJava = new File(baseDirectory, mPackageName.replace('.', '/') + "/R.java");
+    private static File findRJavaFile(final File baseDirectory, final String packageName) {
+        final File rJava = new File(baseDirectory, packageName.replace('.', '/') + "/R.java");
 
         if (rJava.exists()) {
-            mRJavaFile = rJava;
-            return true;
+            return rJava;
         }
 
-        return false;
+        return null;
     }
 
-    private void generateResourceList() throws IOException {
-        final InputStream inputStream = new FileInputStream(mRJavaFile);
+    /**
+     * Removes all resources declared in library projects.
+     */
+    private Set<Resource> getLibraryProjectResources() {
+        final Set<Resource> resources = new HashSet<Resource>();
+
+        // Find the library projects
+        final File projectPropertiesFile = new File(mBaseDirectory, "project.properties");
+
+        if (!projectPropertiesFile.exists()) {
+            return resources;
+        }
+
+        List<String> fileLines = new ArrayList<String>();
+        try {
+            fileLines = FileUtilities.getFileLines(projectPropertiesFile);
+        } catch (final IOException e) {
+            e.printStackTrace();
+        }
+
+        final Pattern libraryProjectPattern = Pattern.compile("^android\\.library\\.reference\\.\\d+=(.*)$", Pattern.CASE_INSENSITIVE);
+
+        final List<String> libraryProjectPaths = new ArrayList<String>();
+
+        for (final String line : fileLines) {
+            final Matcher libraryProjectMatcher = libraryProjectPattern.matcher(line);
+
+            if (libraryProjectMatcher.find()) {
+                libraryProjectPaths.add(libraryProjectMatcher.group(1));
+            }
+        }
+
+        // We have the paths to the library projects, now we need their R.java files
+        for (final String libraryProjectPath : libraryProjectPaths) {
+            final File libraryProjectDirectory = new File(mBaseDirectory, libraryProjectPath);
+
+            if (libraryProjectDirectory.exists() && libraryProjectDirectory.isDirectory()) {
+                final String libraryProjectPackageName = findPackageName(new File(libraryProjectDirectory, "AndroidManifest.xml"));
+                final File libraryProjectRJavaFile = findRJavaFile(new File(libraryProjectDirectory, "gen"), libraryProjectPackageName);
+
+                try {
+                    resources.addAll(getResourceList(libraryProjectRJavaFile));
+                } catch (final IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        return resources;
+    }
+
+    private static Set<Resource> getResourceList(final File rJavaFile) throws IOException {
+        final InputStream inputStream = new FileInputStream(rJavaFile);
         final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
 
         boolean done = false;
 
-        mResources.clear();
+        final Set<Resource> resources = new HashSet<Resource>();
 
         String type = "";
 
@@ -649,7 +731,7 @@ public class ResourceScanner {
                 final Matcher nameMatcher = sResourceNamePattern.matcher(line);
 
                 if (nameMatcher.find()) {
-                    mResources.add(new Resource(type, nameMatcher.group(1)));
+                    resources.add(new Resource(type, nameMatcher.group(2)));
                 } else if (typeMatcher.find()) {
                     type = typeMatcher.group(1);
                 }
@@ -658,6 +740,8 @@ public class ResourceScanner {
 
         reader.close();
         inputStream.close();
+
+        return resources;
     }
 
     private void searchFiles(final File parent, final File file, final FileType fileType) {

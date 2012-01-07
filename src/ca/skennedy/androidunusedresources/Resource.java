@@ -33,6 +33,10 @@ public class Resource implements Comparable<Resource> {
         mDeclaredPaths.add(path);
     }
 
+    public boolean hasNoDeclaredPaths() {
+        return mDeclaredPaths.isEmpty();
+    }
+
     public void addConfiguration(final String configuration) {
         mConfigurations.add(configuration);
     }
