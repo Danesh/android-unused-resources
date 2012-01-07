@@ -15,8 +15,6 @@ public class Resource implements Comparable<Resource> {
     private static final String sStringFormat = "%-10s: %s";
     private static final String sPathFormat = "    %s";
 
-    private static final String DEFAULT_CONFIGURATION = "default";
-
     public Resource(final String type, final String name) {
         super();
         mType = type;
@@ -36,11 +34,7 @@ public class Resource implements Comparable<Resource> {
     }
 
     public void addConfiguration(final String configuration) {
-        if (configuration.length() > 0) {
-            mConfigurations.add(configuration);
-        } else {
-            mConfigurations.add(DEFAULT_CONFIGURATION);
-        }
+        mConfigurations.add(configuration);
     }
 
     public Set<String> getConfigurations() {

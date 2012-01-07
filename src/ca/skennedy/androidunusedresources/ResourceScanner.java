@@ -727,7 +727,7 @@ public class ResourceScanner {
                             if (resourceType.doesFileDeclareResource(parent, fileName, fileContents, resource.getName().replace("_", "[_\\.]"))) {
                                 resource.addDeclaredPath(file.getAbsolutePath());
 
-                                final String configuration = parent.getName().replace(resourceType.getType(), "").replaceAll("^-", "");
+                                final String configuration = parent.getName();
                                 resource.addConfiguration(configuration);
                             }
                         }
