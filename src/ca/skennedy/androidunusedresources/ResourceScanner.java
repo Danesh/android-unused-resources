@@ -134,7 +134,7 @@ public class ResourceScanner {
                 }
 
                 // Check if the attribute is used here
-                // TODO: This will fail to report attrs as unused even when they're never used. Make it better, but don't allow any false positives.
+                // TODO: This can fail to report attrs as unused even when they're never used. Make it better, but don't allow any false positives.
                 final Pattern pattern = Pattern.compile("<.+?:" + resourceName + "\\s*=\\s*\".*?\".*?/?>");
 
                 final Matcher matcher = pattern.matcher(fileContents);
@@ -664,6 +664,47 @@ public class ResourceScanner {
         searchFiles(null, mSrcDirectory, sJavaFileType);
         searchFiles(null, mResDirectory, sXmlFileType);
         searchFiles(null, mManifestFile, sXmlFileType);
+
+        /*
+         * Because attr and styleable are so closely linked, we need to do some matching now to ensure we don't say an attr is unused if its corresponding
+         * styleable is used.
+         */
+        final Set<Resource> extraUsedResources = new HashSet<Resource>();
+
+        for (final Resource resource : mResources) {
+            if (resource.getType().equals("styleable")) {
+                final String[] styleableAttr = resource.getName().split("_");
+
+                if (styleableAttr.length > 1) {
+                    final String attrName = styleableAttr[1];
+
+                    final Resource attrResourceTest = new Resource("attr", attrName);
+
+                    if (mUsedResources.contains(attrResourceTest)) {
+                        // It's used
+                        extraUsedResources.add(resource);
+                    }
+                }
+            } else if (resource.getType().equals("attr")) {
+                // Check if we use this attr as a styleable
+                for (final Resource usedResource : mUsedResources) {
+                    if (usedResource.getType().equals("styleable")) {
+                        final String[] styleableAttr = usedResource.getName().split("_");
+
+                        if (styleableAttr.length > 1 && styleableAttr[1].equals(resource.getName())) {
+                            // It's used
+                            extraUsedResources.add(resource);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Move the new found used resources to the used set
+        for (final Resource resource : extraUsedResources) {
+            mResources.remove(resource);
+            mUsedResources.add(resource);
+        }
 
         /*
          * Find the paths where the unused resources are declared.
