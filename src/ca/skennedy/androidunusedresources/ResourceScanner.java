@@ -34,7 +34,7 @@ public class ResourceScanner {
     private final Set<Resource> mUsedResources = new HashSet<Resource>();
 
     private static final Pattern sResourceTypePattern = Pattern.compile("^\\s*public static final class (\\w+)\\s*\\{$");
-    private static final Pattern sResourceNamePattern = Pattern.compile("^\\s*public static( final)? int (\\w+)=0x[0-9A-Fa-f]+;$");
+    private static final Pattern sResourceNamePattern = Pattern.compile("^\\s*public static( final)? int (\\w+)\\s*=\\s*(0x)?[0-9A-Fa-f]+;$");
 
     private static final FileType sJavaFileType = new FileType("java", "R." + FileType.USAGE_TYPE + "." + FileType.USAGE_NAME + "[^\\w_]");
     private static final FileType sXmlFileType = new FileType("xml", "[\" >]@" + FileType.USAGE_TYPE + "/" + FileType.USAGE_NAME + "[\" <]");
@@ -47,6 +47,7 @@ public class ResourceScanner {
         // bool
         // dimen
         // plurals
+        // styleable
 
         // array
         sResourceTypes.put("array", new ResourceType("array") {
@@ -110,7 +111,7 @@ public class ResourceScanner {
                     }
 
                     final String directoryType = parent.getName().split("-")[0];
-                    if (!directoryType.equals("layout")) {
+                    if (!directoryType.equals("layout") && !directoryType.equals("valuesf")) {
                         return false;
                     }
                 }
@@ -122,6 +123,13 @@ public class ResourceScanner {
                 final Matcher matcher = pattern.matcher(fileContents);
 
                 if (matcher.find()) {
+                    return true;
+                }
+
+                final Pattern itemPattern = Pattern.compile("<item.+?name\\s*=\\s*\"" + resourceName + "\".*?>");
+                final Matcher itemMatcher = itemPattern.matcher(fileContents);
+
+                if (itemMatcher.find()) {
                     return true;
                 }
 
