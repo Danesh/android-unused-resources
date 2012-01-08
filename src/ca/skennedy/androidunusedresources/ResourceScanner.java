@@ -43,11 +43,33 @@ public class ResourceScanner {
 
     static {
         // TODO: find declarations of these resources
-        // anim
         // bool
         // dimen
         // plurals
         // styleable
+
+        // anim
+        sResourceTypes.put("anim", new ResourceType("anim") {
+            @Override
+            public boolean doesFileDeclareResource(final File parent, final String fileName, final String fileContents, final String resourceName) {
+                // Check if we're in a valid directory
+                if (!parent.isDirectory()) {
+                    return false;
+                }
+
+                final String directoryType = parent.getName().split("-")[0];
+                if (!directoryType.equals(getType())) {
+                    return false;
+                }
+
+                // Check if the resource is declared here
+                final String name = fileName.split("\\.")[0];
+
+                final Pattern pattern = Pattern.compile("^" + resourceName + "$");
+
+                return pattern.matcher(name).find();
+            }
+        });
 
         // array
         sResourceTypes.put("array", new ResourceType("array") {
