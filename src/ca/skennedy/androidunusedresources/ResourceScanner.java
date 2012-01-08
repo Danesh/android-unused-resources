@@ -34,7 +34,8 @@ public class ResourceScanner {
     private final Set<Resource> mUsedResources = new HashSet<Resource>();
 
     private static final Pattern sResourceTypePattern = Pattern.compile("^\\s*public static final class (\\w+)\\s*\\{$");
-    private static final Pattern sResourceNamePattern = Pattern.compile("^\\s*public static( final)? int (\\w+)\\s*=\\s*(0x)?[0-9A-Fa-f]+;$");
+    private static final Pattern sResourceNamePattern = Pattern
+            .compile("^\\s*public static( final)? int(\\[\\])? (\\w+)\\s*=\\s*(\\{|(0x)?[0-9A-Fa-f]+;)\\s*$");
 
     private static final FileType sJavaFileType = new FileType("java", "R." + FileType.USAGE_TYPE + "." + FileType.USAGE_NAME + "[^\\w_]");
     private static final FileType sXmlFileType = new FileType("xml", "[\" >]@" + FileType.USAGE_TYPE + "/" + FileType.USAGE_NAME + "[\" <]");
@@ -42,9 +43,6 @@ public class ResourceScanner {
     private static final Map<String, ResourceType> sResourceTypes = new HashMap<String, ResourceType>();
 
     static {
-        // TODO: find declarations of these resources
-        // styleable
-
         // anim
         sResourceTypes.put("anim", new ResourceType("anim") {
             @Override
@@ -130,7 +128,7 @@ public class ResourceScanner {
                     }
 
                     final String directoryType = parent.getName().split("-")[0];
-                    if (!directoryType.equals("layout") && !directoryType.equals("valuesf")) {
+                    if (!directoryType.equals("layout") && !directoryType.equals("values")) {
                         return false;
                     }
                 }
@@ -528,6 +526,57 @@ public class ResourceScanner {
             }
         });
 
+        // styleable
+        sResourceTypes.put("styleable", new ResourceType("styleable") {
+            @Override
+            public boolean doesFileDeclareResource(final File parent, final String fileName, final String fileContents, final String resourceName) {
+                // Check if we're in a valid directory
+                if (!parent.isDirectory()) {
+                    return false;
+                }
+
+                final String directoryType = parent.getName().split("-")[0];
+                if (!directoryType.equals("values")) {
+                    return false;
+                }
+
+                // Check if the resource is declared here
+                final String[] styleableAttr = resourceName.split("\\[_\\\\.\\]");
+
+                if (styleableAttr.length == 1) {
+                    // This is the name of the styleable, not one of its attributes
+                    final Pattern pattern = Pattern.compile("<declare-styleable.*?name\\s*=\\s*\"" + styleableAttr[0] + "\".*?/?>");
+                    final Matcher matcher = pattern.matcher(fileContents);
+
+                    if (matcher.find()) {
+                        return true;
+                    }
+
+                    return false;
+                }
+
+                // It's one of the attributes, like Styleable_attribute
+                final Pattern blockPattern = Pattern.compile("<declare-styleable.*?name\\s*=\\s*\"" + styleableAttr[0] + "\".*?>(.*?)</declare-styleable\\s*>");
+                final Matcher blockMatcher = blockPattern.matcher(fileContents);
+
+                if (blockMatcher.find()) {
+                    final String styleableAttributes = blockMatcher.group(1);
+
+                    // We now have just the attributes for the styleable
+                    final Pattern attributePattern = Pattern.compile("<attr.*?name\\s*=\\s*\"" + styleableAttr[1] + "\".*?/?>");
+                    final Matcher attributeMatcher = attributePattern.matcher(styleableAttributes);
+
+                    if (attributeMatcher.find()) {
+                        return true;
+                    }
+
+                    return false;
+                }
+
+                return false;
+            }
+        });
+
         // xml
         sResourceTypes.put("xml", new ResourceType("xml") {
             @Override
@@ -839,7 +888,7 @@ public class ResourceScanner {
                 final Matcher nameMatcher = sResourceNamePattern.matcher(line);
 
                 if (nameMatcher.find()) {
-                    resources.add(new Resource(type, nameMatcher.group(2)));
+                    resources.add(new Resource(type, nameMatcher.group(3)));
                 } else if (typeMatcher.find()) {
                     type = typeMatcher.group(1);
                 }
