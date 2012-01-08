@@ -45,7 +45,6 @@ public class ResourceScanner {
         // TODO: find declarations of these resources
         // bool
         // dimen
-        // plurals
         // styleable
 
         // anim
@@ -335,6 +334,33 @@ public class ResourceScanner {
                 final Pattern pattern = Pattern.compile("^" + resourceName + "$");
 
                 return pattern.matcher(name).find();
+            }
+        });
+
+        // plurals
+        sResourceTypes.put("plurals", new ResourceType("plurals") {
+            @Override
+            public boolean doesFileDeclareResource(final File parent, final String fileName, final String fileContents, final String resourceName) {
+                // Check if we're in a valid directory
+                if (!parent.isDirectory()) {
+                    return false;
+                }
+
+                final String directoryType = parent.getName().split("-")[0];
+                if (!directoryType.equals("values")) {
+                    return false;
+                }
+
+                // Check if the resource is declared here
+                final Pattern pattern = Pattern.compile("<plurals.*?name\\s*=\\s*\"" + resourceName + "\".*?/?>");
+
+                final Matcher matcher = pattern.matcher(fileContents);
+
+                if (matcher.find()) {
+                    return true;
+                }
+
+                return false;
             }
         });
 
