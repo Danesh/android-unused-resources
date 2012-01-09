@@ -899,10 +899,13 @@ public class ResourceScanner {
                 final String libraryProjectPackageName = findPackageName(new File(libraryProjectDirectory, "AndroidManifest.xml"));
                 final File libraryProjectRJavaFile = findRJavaFile(new File(libraryProjectDirectory, "gen"), libraryProjectPackageName);
 
-                try {
-                    resources.addAll(getResourceList(libraryProjectRJavaFile));
-                } catch (final IOException e) {
-                    e.printStackTrace();
+                // If a project has no resources, it will have no R.java
+                if (libraryProjectRJavaFile != null) {
+                    try {
+                        resources.addAll(getResourceList(libraryProjectRJavaFile));
+                    } catch (final IOException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         }
