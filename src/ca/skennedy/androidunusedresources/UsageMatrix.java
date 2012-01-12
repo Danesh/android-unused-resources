@@ -49,12 +49,12 @@ public class UsageMatrix {
 
         if (!matrixDirectory.exists()) {
             System.out
-                    .println("Not generating usage matrices. If you would like them, create a directory named 'resource-matrices' in the base of your project.");
+                    .println("Not generating resource qualifier matrices. If you would like them, create a directory named 'resource-matrices' in the base of your project.");
             System.out.println();
             return;
         }
 
-        System.out.println("Usage matrices generated.");
+        System.out.println("Resource qualifier matrices generated.");
         System.out.println();
 
         generateConfigurationList();
