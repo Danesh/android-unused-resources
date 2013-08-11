@@ -7,6 +7,6 @@ public class Loader {
 
     public static void main(final String[] args) {
         final ResourceScanner resourceScanner = new ResourceScanner();
-        resourceScanner.run();
+        resourceScanner.run(args);
     }
 }

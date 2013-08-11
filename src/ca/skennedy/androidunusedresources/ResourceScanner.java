@@ -618,10 +618,35 @@ public class ResourceScanner {
         mBaseDirectory = new File(baseDirectory);
     }
 
-    public void run() {
+    private File findGenDirectory() {
+        String base = System.getenv("OUT_DIR");
+        String currentProject = mBaseDirectory.getName();
+        File genDir = new File(base, "target/common/obj/APPS/"
+                + currentProject + "_intermediates/src");
+        if (genDir.exists()) {
+            return genDir;
+        } else {
+            return null;
+        }
+    }
+
+    public void run(String[] args) {
         System.out.println("Running in: " + mBaseDirectory.getAbsolutePath());
 
+        boolean isAosp = false;
+        if (args.length > 0 && args[0].equals("--aosp")) {
+            if (System.getenv("OUT_DIR") == null) {
+                System.out.println("Please setup your build environment");
+                return;
+            }
+            isAosp = true;
+        }
+
         findPaths();
+
+        if (isAosp) {
+            mGenDirectory = findGenDirectory();
+        }
 
         if (mSrcDirectory == null || mResDirectory == null || mManifestFile == null) {
             System.err.println("The current directory is not a valid Android project root.");
